@@ -1,0 +1,15 @@
+# internal planning (never commit)
+_plan/
+
+node_modules/
+dist/
+
+# secrets
+.env
+.env.*
+*.local
+
+.DS_Store
+
+# local agent tooling (contains machine-specific paths)
+.claude/
