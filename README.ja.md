@@ -2,6 +2,8 @@
 
 [English](./README.md) | 日本語
 
+![デモ画面のスクリーンショット](./docs/screenshot.jpg)
+
 視聴者のコメントを [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) に渡し、AITuber のテンションが上がるか、変わらないか、下がるかを判定させるデモです。判定結果に応じて、テンションの数値と顔文字が変わります。
 
 Jev は文章を生成しません。用意した選択肢のどれに当たるかを、選択肢ごとの確率つきで返します。このデモでは `UP` / `SAME` / `DOWN` の3つの確率をすべて画面に表示します。

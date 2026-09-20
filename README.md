@@ -2,6 +2,8 @@
 
 English | [日本語](./README.ja.md)
 
+![Screenshot of the demo](./docs/screenshot.jpg)
+
 A small demo that passes a viewer comment to [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) and asks whether the AITuber's tension goes up, stays the same, or goes down. The tension value and the character's kaomoji change according to the result.
 
 Jev does not generate text. It returns which of your predefined options applies, with a probability for each option. This demo shows all three probabilities (`UP` / `SAME` / `DOWN`) on screen.
