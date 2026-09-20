@@ -57,7 +57,7 @@ OpenRouter では、Jev を Chat Completions API から呼び出せません。�
 POST https://openrouter.ai/api/alpha/decisions
 ```
 
-リクエストには、判定の材料になる `state` と、型を指定した質問 `questions` を入れます。プロンプト文は組み立てません。
+リクエストには、判定の材料になる `state` と、型を指定した質問 `questions` を入れます。
 
 ```json
 {
@@ -103,13 +103,9 @@ OpenRouter との通信は `src/lib/jev.ts` にまとめてあります。UI 側
 
 ## API キーの扱い
 
-API キーはブラウザの localStorage に保存し、ブラウザから OpenRouter へ直接送信します。ソースコードやリポジトリにはキーを書きません。
+API キーはブラウザの localStorage に保存し、ブラウザから OpenRouter へ直接送信します。
 
 この方式は、手元で動かすデモのためのものです。公開する Web サービスで同じ方式を使うと、利用者のブラウザにキーが渡ってしまいます。公開する場合は、サーバー側でキーを保持し、サーバー経由で API を呼び出してください。
-
-## このデモに含まれないもの
-
-コメントへの返答文の生成、音声合成、音声認識、Live2D、YouTube や Twitch との接続、会話履歴、長期記憶は実装していません。
 
 ## 開発
 
@@ -118,7 +114,7 @@ npm run lint
 npm run build
 ```
 
-Vite、React、TypeScript で作っています。UI ライブラリと状態管理ライブラリは使っていません。
+Vite、React、TypeScript で作っています。
 
 ## ライセンス
 

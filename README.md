@@ -57,7 +57,7 @@ On OpenRouter, Jev cannot be called through the Chat Completions API. This demo 
 POST https://openrouter.ai/api/alpha/decisions
 ```
 
-The request carries a `state` (the material to judge) and typed `questions`. No prompt text is assembled.
+The request carries a `state` (the material to judge) and typed `questions`.
 
 ```json
 {
@@ -103,13 +103,9 @@ All communication with OpenRouter lives in `src/lib/jev.ts`. The UI only uses `j
 
 ## API key handling
 
-The API key is stored in the browser's localStorage and sent directly from the browser to OpenRouter. It is never written to the source code or the repository.
+The API key is stored in the browser's localStorage and sent directly from the browser to OpenRouter.
 
 This approach is meant for a demo running on your own machine. In a public web service it would hand your key to every visitor's browser. For a public deployment, keep the key on a server and call the API through it.
-
-## Out of scope
-
-Reply text generation, text-to-speech, speech recognition, Live2D, YouTube or Twitch integration, conversation history, and long-term memory are not implemented.
 
 ## Development
 
@@ -118,7 +114,7 @@ npm run lint
 npm run build
 ```
 
-Built with Vite, React, and TypeScript. No UI library or state management library is used.
+Built with Vite, React, and TypeScript.
 
 ## License
 
