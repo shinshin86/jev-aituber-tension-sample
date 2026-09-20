@@ -1,27 +1,40 @@
+import { useEffect, useRef } from 'react'
 import type { Settings } from '../lib/jev'
 import { MODEL_OPTIONS } from '../lib/settings'
 
 type SettingsPanelProps = {
   open: boolean
-  draft: Settings
+  settings: Settings
   saved: boolean
+  saveSucceeded: boolean
+  focusRequest: number
   saveFailed: boolean
   onToggle: () => void
   onChange: (settings: Settings) => void
-  onSave: () => void
 }
 
 export function SettingsPanel({
   open,
-  draft,
+  settings,
   saved,
+  saveSucceeded,
+  focusRequest,
   saveFailed,
   onToggle,
   onChange,
-  onSave,
 }: SettingsPanelProps) {
+  const sectionRef = useRef<HTMLElement>(null)
+  const apiKeyInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    apiKeyInputRef.current?.focus({ preventScroll: true })
+  }, [focusRequest, open])
+
   return (
-    <section className="settings">
+    <section className="settings" ref={sectionRef}>
       <button
         className="settings-toggle"
         type="button"
@@ -29,32 +42,42 @@ export function SettingsPanel({
         aria-expanded={open}
         aria-controls="settings-content"
       >
-        <span>SETTINGS</span>
-        <span className={saved ? 'key-state key-state--set' : 'key-state'}>
-          {saved ? '● KEY SET' : '○ KEY NOT SET'}
+        <span>⚙ SETTINGS</span>
+        <span className="settings-toggle__status" aria-live="polite">
+          {saveSucceeded ? (
+            <span className="save-success">保存しました</span>
+          ) : (
+            <span className={saved ? 'settings-key-state settings-key-state--set' : 'settings-key-state'}>
+              {saved ? 'KEY SET' : 'KEY NOT SET'}
+            </span>
+          )}
         </span>
-        <span aria-hidden="true">{open ? '−' : '+'}</span>
+        <span className="settings-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
       </button>
 
       {open && (
         <div id="settings-content" className="settings-content">
-          <label htmlFor="api-key">
-            OpenRouter API Key
+          <div className="settings-field">
+            <label htmlFor="api-key">OpenRouter API Key</label>
             <input
+              ref={apiKeyInputRef}
               id="api-key"
               type="password"
               autoComplete="off"
-              value={draft.apiKey}
-              onChange={(event) => onChange({ ...draft, apiKey: event.target.value })}
+              defaultValue={settings.apiKey}
+              onChange={(event) => onChange({ ...settings, apiKey: event.target.value })}
               placeholder="API key"
             />
-          </label>
+            <p className="api-key-help">
+              入力内容は自動で保存され、API キーはこのブラウザの localStorage にだけ保存されます。
+            </p>
+          </div>
           <label htmlFor="model-id">
             Model ID
             <select
               id="model-id"
-              value={draft.modelId}
-              onChange={(event) => onChange({ ...draft, modelId: event.target.value })}
+              value={settings.modelId}
+              onChange={(event) => onChange({ ...settings, modelId: event.target.value })}
             >
               {MODEL_OPTIONS.map((option) => (
                 <option value={option.value} key={option.value}>
@@ -63,10 +86,7 @@ export function SettingsPanel({
               ))}
             </select>
           </label>
-          <div className="settings-actions">
-            {saveFailed && <span className="save-error">保存できませんでした</span>}
-            <button type="button" onClick={onSave}>SAVE</button>
-          </div>
+          {saveFailed && <p className="save-error" role="alert">保存できませんでした</p>}
         </div>
       )}
     </section>

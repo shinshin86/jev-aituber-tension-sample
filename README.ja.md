@@ -23,7 +23,7 @@ npm run dev
 
 ## 使い方
 
-1. 画面の `SETTINGS` を開き、[OpenRouter](https://openrouter.ai/) の API キーを入力して `SAVE` を押します。
+1. 画面の `SETTINGS` を開き、[OpenRouter](https://openrouter.ai/) の API キーを入力します。入力内容は自動で保存されます。
 2. `Model ID` は `typesafe/jev-1.13` のままで動きます。
 3. コメントを入力して `SEND` を押します(Enter キーでも送信できます)。
 

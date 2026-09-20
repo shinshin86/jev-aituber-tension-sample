@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CommentInput } from './components/CommentInput'
 import { History, type HistoryEntry } from './components/History'
 import { JevDecisionPanel } from './components/JevDecisionPanel'
@@ -63,21 +63,51 @@ function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [comment, setComment] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsDraft, setSettingsDraft] = useState<Settings>(settings)
   const [settingsSaveFailed, setSettingsSaveFailed] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+  const [settingsFocusRequest, setSettingsFocusRequest] = useState(0)
   const [delta, setDelta] = useState<number | null>(null)
   const commentInputRef = useRef<HTMLInputElement>(null)
+  const savedMessageTimerRef = useRef<number | null>(null)
+  const wasLoadingRef = useRef(false)
+
+  useEffect(() => () => {
+    if (savedMessageTimerRef.current !== null) {
+      window.clearTimeout(savedMessageTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (wasLoadingRef.current && !loading) {
+      commentInputRef.current?.focus()
+    }
+    wasLoadingRef.current = loading
+  }, [loading])
+
+  const handleOpenSettings = () => {
+    setSettingsOpen(true)
+    setSettingsFocusRequest((current) => current + 1)
+  }
+
+  const handleToggleSettings = () => {
+    if (settingsOpen) {
+      setSettingsOpen(false)
+      return
+    }
+    setSettingsOpen(true)
+    setSettingsFocusRequest((current) => current + 1)
+  }
 
   const handleSend = async () => {
     if (loading) return
     setDelta(null)
-    if (!comment.trim()) {
-      setError({ summary: 'コメントを入力してください。' })
+    if (!settings.apiKey.trim()) {
+      setError(null)
+      handleOpenSettings()
       return
     }
-    if (!settings.apiKey.trim()) {
-      setError({ summary: 'Settings で OpenRouter API Key を設定してください。' })
-      setSettingsOpen(true)
+    if (!comment.trim()) {
+      setError({ summary: 'コメントを入力してください。' })
       return
     }
 
@@ -108,45 +138,53 @@ function App() {
       setError(messageForError(caught, settings.apiKey))
     } finally {
       setLoading(false)
-      window.requestAnimationFrame(() => commentInputRef.current?.focus())
     }
   }
 
-  const handleSaveSettings = () => {
+  const handleSettingsChange = (nextValue: Settings) => {
     const nextSettings = {
-      apiKey: settingsDraft.apiKey.trim(),
-      modelId: settingsDraft.modelId || DEFAULT_SETTINGS.modelId,
+      apiKey: nextValue.apiKey.trim(),
+      modelId: nextValue.modelId || DEFAULT_SETTINGS.modelId,
     }
+    setSettings(nextSettings)
+    setError(null)
+
     const didSave = saveSettings(nextSettings)
     setSettingsSaveFailed(!didSave)
-    if (didSave) {
-      setSettings(nextSettings)
-      setSettingsDraft(nextSettings)
-      setError(null)
-      setSettingsOpen(false)
+    if (savedMessageTimerRef.current !== null) {
+      window.clearTimeout(savedMessageTimerRef.current)
     }
+
+    if (!didSave) {
+      setSettingsSaved(false)
+      savedMessageTimerRef.current = null
+      return
+    }
+
+    setSettingsSaved(true)
+    savedMessageTimerRef.current = window.setTimeout(() => {
+      setSettingsSaved(false)
+      savedMessageTimerRef.current = null
+    }, 2000)
   }
 
   return (
     <main className="app-shell">
       <article className="console-card">
         <header className="app-header">
-          <div>
-            <p className="system-label">SYSTEM ONE // LIVE INFERENCE</p>
-            <h1>AITUBER <span>TENSION MONITOR</span></h1>
-          </div>
-          <div
-            className={`jev-badge ${
-              !settings.apiKey.trim()
-                ? 'jev-badge--unset'
-                : loading
-                  ? 'jev-badge--judging'
-                  : 'jev-badge--ready'
-            }`}
-          >
-            <span /> JEV {!settings.apiKey.trim() ? 'KEY NOT SET' : loading ? 'JUDGING' : 'READY'}
-          </div>
+          <h1>AITUBER <span>TENSION MONITOR</span></h1>
         </header>
+
+        <SettingsPanel
+          open={settingsOpen}
+          settings={settings}
+          saved={Boolean(settings.apiKey.trim())}
+          saveSucceeded={settingsSaved}
+          focusRequest={settingsFocusRequest}
+          saveFailed={settingsSaveFailed}
+          onToggle={handleToggleSettings}
+          onChange={handleSettingsChange}
+        />
 
         <div className="latest-comment">
           <span>Latest comment</span>
@@ -156,7 +194,6 @@ function App() {
         <div className="primary-grid">
           <div>
             <div className="section-heading section-heading--tension">
-              <span className="section-index">01</span>
               <h2>CHARACTER STATE</h2>
             </div>
             <TensionDisplay tension={tension} delta={delta} />
@@ -171,26 +208,19 @@ function App() {
           </div>
         )}
 
+        {!settings.apiKey.trim() && (
+          <p className="api-key-warning" role="status">
+            ! API キーが設定されていません。SETTINGS から設定してください。
+          </p>
+        )}
+
         <CommentInput
           value={comment}
           loading={loading}
+          apiKeyConfigured={Boolean(settings.apiKey.trim())}
           inputRef={commentInputRef}
           onChange={setComment}
           onSubmit={handleSend}
-        />
-
-        <SettingsPanel
-          open={settingsOpen}
-          draft={settingsDraft}
-          saved={Boolean(settings.apiKey.trim())}
-          saveFailed={settingsSaveFailed}
-          onToggle={() => {
-            setSettingsDraft(settings)
-            setSettingsSaveFailed(false)
-            setSettingsOpen((current) => !current)
-          }}
-          onChange={setSettingsDraft}
-          onSave={handleSaveSettings}
         />
 
         <History entries={history} />

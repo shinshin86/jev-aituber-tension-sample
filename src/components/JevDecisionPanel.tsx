@@ -20,9 +20,7 @@ export function JevDecisionPanel({ decision }: JevDecisionPanelProps) {
   return (
     <section className={`decision-panel${decision ? '' : ' decision-panel--waiting'}`}>
       <div className="section-heading">
-        <span className="section-index">02</span>
         <h2>JEV DECISION</h2>
-        <span className={`status-dot${decision ? ' status-dot--live' : ''}`} />
       </div>
 
       <div className="decision-rows">

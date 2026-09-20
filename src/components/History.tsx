@@ -15,7 +15,6 @@ export function History({ entries }: HistoryProps) {
   return (
     <section className="history">
       <div className="section-heading">
-        <span className="section-index">03</span>
         <h2>RECENT SIGNALS</h2>
         <span className="history-count">{entries.length}/5</span>
       </div>

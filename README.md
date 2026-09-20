@@ -23,7 +23,7 @@ Open the URL printed in the terminal.
 
 ## Usage
 
-1. Open `SETTINGS`, enter your [OpenRouter](https://openrouter.ai/) API key, and press `SAVE`.
+1. Open `SETTINGS` and enter your [OpenRouter](https://openrouter.ai/) API key. Changes are saved automatically.
 2. The default `Model ID`, `typesafe/jev-1.13`, works as is.
 3. Type a comment and press `SEND` (or hit Enter).
 
