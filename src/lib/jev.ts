@@ -1,8 +1,11 @@
 // ブラウザから API キーを直接送る方式はローカルデモ専用です。
 // 公開 Web サービスでは利用者にキーが露出するため、サーバー側プロキシを使用してください。
 
+import { PROVIDERS, type ProviderId } from './providers'
+
 export type JevDecision = { up: number; same: number; down: number }
-export type Settings = { apiKey: string; modelId: string }
+export type ProviderSettings = { apiKey: string; modelId: string }
+export type Settings = { provider: ProviderId } & Record<ProviderId, ProviderSettings>
 
 export type JevErrorKind =
   | 'missing_api_key'
@@ -25,11 +28,6 @@ export class JevError extends Error {
     this.status = status
   }
 }
-
-const OPENROUTER = {
-  url: 'https://openrouter.ai/api/alpha/decisions',
-  title: 'jev-aituber-tension-sample',
-} as const
 
 const TENSION_QUESTION = {
   type: 'choice',
@@ -114,13 +112,15 @@ function errorMessageFromBody(body: string): string | undefined {
 
   try {
     const parsed: unknown = JSON.parse(body)
-    if (
-      isRecord(parsed) &&
-      isRecord(parsed.error) &&
-      typeof parsed.error.message === 'string'
-    ) {
+    if (!isRecord(parsed)) return undefined
+    if (isRecord(parsed.error) && typeof parsed.error.message === 'string') {
       return parsed.error.message
     }
+    if (isRecord(parsed.detail) && typeof parsed.detail.message === 'string') {
+      return parsed.detail.message
+    }
+    if (typeof parsed.detail === 'string') return parsed.detail
+    if (Array.isArray(parsed.detail)) return JSON.stringify(parsed.detail)
   } catch {
     return undefined
   }
@@ -128,24 +128,27 @@ function errorMessageFromBody(body: string): string | undefined {
   return undefined
 }
 
-function createOpenRouterRequest(
+function createJevRequest(
   comment: string,
   currentTension: number,
   settings: Settings,
   signal: AbortSignal,
 ): { url: string; init: RequestInit } {
+  const provider = PROVIDERS[settings.provider]
+  const providerSettings = settings[settings.provider]
+
   return {
-    url: OPENROUTER.url,
+    url: provider.url,
     init: {
       method: 'POST',
       signal,
       headers: {
-        Authorization: `Bearer ${settings.apiKey.trim()}`,
+        Authorization: `Bearer ${providerSettings.apiKey.trim()}`,
         'Content-Type': 'application/json',
-        'X-Title': OPENROUTER.title,
+        ...provider.extraHeaders,
       },
       body: JSON.stringify({
-        model: settings.modelId.trim(),
+        model: providerSettings.modelId.trim(),
         state: {
           current_tension: currentTension,
           viewer_comment: comment,
@@ -162,18 +165,20 @@ export async function judgeTension(
   settings: Settings,
 ): Promise<JevDecision> {
   const trimmedComment = comment.trim()
+  const provider = PROVIDERS[settings.provider]
+  const providerSettings = settings[settings.provider]
   if (!trimmedComment) {
     throw new JevError('empty_comment', 'Comment is empty')
   }
-  if (!settings.apiKey.trim()) {
-    throw new JevError('missing_api_key', 'OpenRouter API Key is missing')
+  if (!providerSettings.apiKey.trim()) {
+    throw new JevError('missing_api_key', `${provider.label} API Key is missing`)
   }
 
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), 15_000)
 
   try {
-    const request = createOpenRouterRequest(
+    const request = createJevRequest(
       trimmedComment,
       currentTension,
       settings,
@@ -185,8 +190,8 @@ export async function judgeTension(
       const body = await response.text().catch(() => '')
       const detail = errorMessageFromBody(body)
       const message = detail
-        ? `OpenRouter API error (${response.status}): ${detail}`
-        : `OpenRouter API error (${response.status})`
+        ? `${provider.label} API error (${response.status}): ${detail}`
+        : `${provider.label} API error (${response.status})`
       throw new JevError(errorKindForStatus(response.status), message, response.status)
     }
 
@@ -194,16 +199,16 @@ export async function judgeTension(
     try {
       raw = await response.json()
     } catch {
-      throw new JevError('parse', 'OpenRouter returned invalid JSON')
+      throw new JevError('parse', `${provider.label} returned invalid JSON`)
     }
 
     return toJevDecision(raw)
   } catch (error) {
     if (error instanceof JevError) throw error
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new JevError('network', 'OpenRouter request timed out')
+      throw new JevError('network', `${provider.label} request timed out`)
     }
-    throw new JevError('network', 'Could not connect to OpenRouter')
+    throw new JevError('network', `Could not connect to ${provider.label}`)
   } finally {
     window.clearTimeout(timeout)
   }

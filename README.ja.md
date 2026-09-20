@@ -25,9 +25,10 @@ npm run dev
 
 ## 使い方
 
-1. 画面の `SETTINGS` を開き、[OpenRouter](https://openrouter.ai/) の API キーを入力します。入力内容は自動で保存されます。
-2. `Model ID` は `typesafe/jev-1.13` のままで動きます。
-3. コメントを入力して `SEND` を押します(Enter キーでも送信できます)。
+1. 画面の `SETTINGS` を開き、`Provider` で接続先を選びます。[TypeSafe AI](https://typesafe.ai/) の公式 API(初期値)か、[OpenRouter](https://openrouter.ai/) 経由のどちらかを使えます。
+2. 選んだ接続先の API キーを入力します。入力内容は自動で保存されます。キーは接続先ごとに別々に保存するので、切り替えても消えません。TypeSafe AI のキーは [console.typesafe.ai/keys](https://console.typesafe.ai/keys) で発行します。
+3. `Model ID` は初期値のままで動きます(TypeSafe AI は `jev-latest`、OpenRouter は `typesafe/jev-1.13`)。
+4. コメントを入力して `SEND` を押します(Enter キーでも送信できます)。
 
 判定が返ると、`JEV DECISION` の3つの確率が更新され、最も確率の高い判定でテンションが変わります。
 
@@ -51,17 +52,20 @@ npm run dev
 
 ## Jev の呼び出し
 
-OpenRouter では、Jev を Chat Completions API から呼び出せません。このデモでは Decisions API(alpha)を使います。
+接続先によって、呼び出すエンドポイントとモデル名が変わります。
 
-```text
-POST https://openrouter.ai/api/alpha/decisions
-```
+| 接続先 | エンドポイント | モデル名の例 |
+| --- | --- | --- |
+| TypeSafe AI | `POST https://api.typesafe.ai/v1/systemone` | `jev-latest` |
+| OpenRouter | `POST https://openrouter.ai/api/alpha/decisions` | `typesafe/jev-1.13` |
 
-リクエストには、判定の材料になる `state` と、型を指定した質問 `questions` を入れます。
+OpenRouter では、Jev を Chat Completions API から呼び出せません。Decisions API(alpha)を使います。
+
+リクエストとレスポンスの形は、どちらの接続先でも同じです。リクエストには、判定の材料になる `state` と、型を指定した質問 `questions` を入れます。
 
 ```json
 {
-  "model": "typesafe/jev-1.13",
+  "model": "jev-latest",
   "state": {
     "current_tension": 50,
     "viewer_comment": "今日かわいいね！"
@@ -99,11 +103,19 @@ type JevDecision = { up: number; same: number; down: number }
 
 `probabilities` は API の仕様上、省略されることがあります。その場合は `choice` の選択肢を 1、残りを 0 として扱います。どちらも読み取れないときはエラーとし、テンションは変更しません。
 
-OpenRouter との通信は `src/lib/jev.ts` にまとめてあります。UI 側は `judgeTension()` と `JevDecision` だけを使うので、接続先を Jev の API に変える場合はこのファイルを差し替えます。
+接続先ごとの違い(URL、モデル名、追加ヘッダー)は `src/lib/providers.ts` に、通信と変換は `src/lib/jev.ts` にまとめてあります。UI 側は `judgeTension()` と `JevDecision` だけを使います。
+
+### TypeSafe AI は開発サーバー経由で呼び出す
+
+2026年9月時点では、ブラウザから `https://api.typesafe.ai` を直接呼び出すと、事前確認のリクエスト(preflight)が `Disallowed CORS origin` で拒否されます。`localhost` からでも同じです。TypeSafe AI の API は公開されたばかりで、ドキュメントに CORS についての記載はまだありません。今後変わる可能性があります。
+
+そのためこのデモでは、Vite の開発サーバーが `/api/typesafe` へのリクエストを `https://api.typesafe.ai` に転送します(`vite.config.ts`)。TypeSafe AI を使えるのは `npm run dev` または `npm run preview` で動かしているときだけです。ビルドした `dist` を静的ホスティングに置いた場合は、OpenRouter だけが使えます。
+
+ブラウザから直接呼び出せるようになった場合は、`src/lib/providers.ts` の URL を `https://api.typesafe.ai/v1/systemone` に変え、`vite.config.ts` の転送設定を削除すれば、開発サーバーを経由せずに動きます。
 
 ## API キーの扱い
 
-API キーはブラウザの localStorage に保存し、ブラウザから OpenRouter へ直接送信します。
+API キーはブラウザの localStorage に保存します。TypeSafe AI へは手元の開発サーバーを経由して送信し、OpenRouter へはブラウザから直接送信します。
 
 この方式は、手元で動かすデモのためのものです。公開する Web サービスで同じ方式を使うと、利用者のブラウザにキーが渡ってしまいます。公開する場合は、サーバー側でキーを保持し、サーバー経由で API を呼び出してください。
 

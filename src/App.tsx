@@ -5,6 +5,7 @@ import { JevDecisionPanel } from './components/JevDecisionPanel'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TensionDisplay } from './components/TensionDisplay'
 import { JevError, judgeTension, type JevDecision, type Settings } from './lib/jev'
+import { PROVIDERS, type ProviderDef } from './lib/providers'
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/settings'
 import { applyVerdict, INITIAL_TENSION, pickVerdict, TENSION_STEP } from './lib/tension'
 
@@ -21,7 +22,7 @@ function safeErrorDetail(message: string, apiKey: string): string {
     : withoutBearer
 }
 
-function messageForError(error: unknown, apiKey: string): UiError {
+function messageForError(error: unknown, provider: ProviderDef, apiKey: string): UiError {
   if (!(error instanceof JevError)) {
     return { summary: '予期しないエラーが発生しました。' }
   }
@@ -33,22 +34,22 @@ function messageForError(error: unknown, apiKey: string): UiError {
 
   switch (error.kind) {
     case 'missing_api_key':
-      return { summary: 'Settings で OpenRouter API Key を設定してください。' }
+      return { summary: `Settings で ${provider.label} API Key を設定してください。` }
     case 'empty_comment':
       return { summary: 'コメントを入力してください。' }
     case 'auth':
       return withDetail('API キーが正しくありません。Settings を確認してください。')
     case 'payment':
-      return withDetail('OpenRouter のクレジットが不足しています。')
+      return withDetail(`${provider.label} のクレジットが不足しています。`)
     case 'rate_limit':
       return withDetail('Rate Limit に達しました。少し待ってから再実行してください。')
     case 'network':
-      return { summary: 'OpenRouter に接続できませんでした。通信状態を確認してください。' }
+      return { summary: `${provider.label} に接続できませんでした。通信状態を確認してください。` }
     case 'parse':
       return { summary: 'Jev の応答を読み取れませんでした。' }
     case 'api':
       return withDetail(
-        `OpenRouter API でエラーが発生しました${error.status ? ` (${error.status})` : ''}。`,
+        `${provider.label} API でエラーが発生しました${error.status ? ` (${error.status})` : ''}。`,
       )
   }
 }
@@ -70,6 +71,8 @@ function App() {
   const commentInputRef = useRef<HTMLInputElement>(null)
   const savedMessageTimerRef = useRef<number | null>(null)
   const wasLoadingRef = useRef(false)
+  const activeProvider = PROVIDERS[settings.provider]
+  const activeSettings = settings[settings.provider]
 
   useEffect(() => () => {
     if (savedMessageTimerRef.current !== null) {
@@ -101,7 +104,7 @@ function App() {
   const handleSend = async () => {
     if (loading) return
     setDelta(null)
-    if (!settings.apiKey.trim()) {
+    if (!activeSettings.apiKey.trim()) {
       setError(null)
       handleOpenSettings()
       return
@@ -135,16 +138,20 @@ function App() {
       ].slice(0, 5))
       setComment('')
     } catch (caught) {
-      setError(messageForError(caught, settings.apiKey))
+      setError(messageForError(caught, activeProvider, activeSettings.apiKey))
     } finally {
       setLoading(false)
     }
   }
 
   const handleSettingsChange = (nextValue: Settings) => {
-    const nextSettings = {
-      apiKey: nextValue.apiKey.trim(),
-      modelId: nextValue.modelId || DEFAULT_SETTINGS.modelId,
+    const selected = nextValue.provider
+    const nextSettings: Settings = {
+      ...nextValue,
+      [selected]: {
+        apiKey: nextValue[selected].apiKey.trim(),
+        modelId: nextValue[selected].modelId || DEFAULT_SETTINGS[selected].modelId,
+      },
     }
     setSettings(nextSettings)
     setError(null)
@@ -178,7 +185,7 @@ function App() {
         <SettingsPanel
           open={settingsOpen}
           settings={settings}
-          saved={Boolean(settings.apiKey.trim())}
+          saved={Boolean(activeSettings.apiKey.trim())}
           saveSucceeded={settingsSaved}
           focusRequest={settingsFocusRequest}
           saveFailed={settingsSaveFailed}
@@ -208,7 +215,7 @@ function App() {
           </div>
         )}
 
-        {!settings.apiKey.trim() && (
+        {!activeSettings.apiKey.trim() && (
           <p className="api-key-warning" role="status">
             ! API キーが設定されていません。SETTINGS から設定してください。
           </p>
@@ -217,7 +224,7 @@ function App() {
         <CommentInput
           value={comment}
           loading={loading}
-          apiKeyConfigured={Boolean(settings.apiKey.trim())}
+          apiKeyConfigured={Boolean(activeSettings.apiKey.trim())}
           inputRef={commentInputRef}
           onChange={setComment}
           onSubmit={handleSend}
@@ -226,8 +233,8 @@ function App() {
         <History entries={history} />
 
         <footer>
-          <span>MODEL // {settings.modelId}</span>
-          <span>ENDPOINT // OPENROUTER DECISIONS</span>
+          <span>MODEL // {activeSettings.modelId}</span>
+          <span>ENDPOINT // {activeProvider.endpointLabel}</span>
         </footer>
       </article>
     </main>

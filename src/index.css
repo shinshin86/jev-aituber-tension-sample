@@ -476,6 +476,10 @@ h1 span {
   font-size: 13px;
 }
 
+.settings-field {
+  grid-column: 1 / -1;
+}
+
 .settings-content input,
 .settings-content select {
   width: 100%;
@@ -504,6 +508,14 @@ h1 span {
   margin: 0;
   color: var(--accent-down);
   font-size: 12px;
+}
+
+.provider-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #93a4ad;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .api-key-warning {

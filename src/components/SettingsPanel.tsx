@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Settings } from '../lib/jev'
-import { MODEL_OPTIONS } from '../lib/settings'
+import { PROVIDER_IDS, PROVIDERS, type ProviderId } from '../lib/providers'
 
 type SettingsPanelProps = {
   open: boolean
@@ -25,6 +25,8 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const apiKeyInputRef = useRef<HTMLInputElement>(null)
+  const provider = PROVIDERS[settings.provider]
+  const providerSettings = settings[settings.provider]
 
   useEffect(() => {
     if (!open) return
@@ -57,35 +59,70 @@ export function SettingsPanel({
 
       {open && (
         <div id="settings-content" className="settings-content">
-          <div className="settings-field">
-            <label htmlFor="api-key">OpenRouter API Key</label>
-            <input
-              ref={apiKeyInputRef}
-              id="api-key"
-              type="password"
-              autoComplete="off"
-              defaultValue={settings.apiKey}
-              onChange={(event) => onChange({ ...settings, apiKey: event.target.value })}
-              placeholder="API key"
-            />
-            <p className="api-key-help">
-              入力内容は自動で保存され、API キーはこのブラウザの localStorage にだけ保存されます。
-            </p>
-          </div>
+          <label htmlFor="provider">
+            Provider
+            <select
+              id="provider"
+              value={settings.provider}
+              onChange={(event) => onChange({
+                ...settings,
+                provider: event.target.value as ProviderId,
+              })}
+            >
+              {PROVIDER_IDS.map((providerId) => (
+                <option value={providerId} key={providerId}>
+                  {PROVIDERS[providerId].label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label htmlFor="model-id">
             Model ID
             <select
               id="model-id"
-              value={settings.modelId}
-              onChange={(event) => onChange({ ...settings, modelId: event.target.value })}
+              value={providerSettings.modelId}
+              onChange={(event) => onChange({
+                ...settings,
+                [settings.provider]: {
+                  ...providerSettings,
+                  modelId: event.target.value,
+                },
+              })}
             >
-              {MODEL_OPTIONS.map((option) => (
+              {provider.models.map((option) => (
                 <option value={option.value} key={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
           </label>
+          <div className="settings-field">
+            <label htmlFor="api-key">{provider.label} API Key</label>
+            <input
+              key={settings.provider}
+              ref={apiKeyInputRef}
+              id="api-key"
+              type="password"
+              autoComplete="off"
+              defaultValue={providerSettings.apiKey}
+              onChange={(event) => onChange({
+                ...settings,
+                [settings.provider]: {
+                  ...providerSettings,
+                  apiKey: event.target.value,
+                },
+              })}
+              placeholder="API key"
+            />
+            <p className="api-key-help">
+              入力内容は自動で保存され、API キーはこのブラウザの localStorage にだけ保存されます。
+            </p>
+          </div>
+          {settings.provider === 'typesafe' && (
+            <p className="provider-note">
+              現時点ではブラウザから TypeSafe AI を直接呼び出せないため、開発サーバー(npm run dev)経由で接続します。
+            </p>
+          )}
           {saveFailed && <p className="save-error" role="alert">保存できませんでした</p>}
         </div>
       )}
